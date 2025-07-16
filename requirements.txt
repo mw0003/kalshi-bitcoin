@@ -1,0 +1,15 @@
+ccxt
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+ta
+yfinance
+tqdm
+lightgbm
+darts
+torch
+pytorch-forecasting
+plotly
+joblib
