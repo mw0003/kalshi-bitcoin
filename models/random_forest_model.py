@@ -116,3 +116,30 @@ class RandomForestForecaster(BaseForecaster):
         except Exception as e:
             self.logger.warning(f"Could not extract feature importance: {e}")
             return None
+    
+    def predict_quantiles(self, X_test, quantiles=None):
+        """
+        Predict quantiles using individual trees for uncertainty estimation
+        """
+        if quantiles is None:
+            quantiles = [0.05, 0.25, 0.5, 0.75, 0.95]
+        
+        if not self.is_fitted:
+            raise ValueError("Model must be fitted before making predictions")
+        
+        X_test_scaled = self.scaler.transform(X_test)
+        n_test, n_horizons = X_test_scaled.shape[0], len(self.model.estimators_)
+        
+        quantile_predictions = {}
+        for q in quantiles:
+            quantile_predictions[q] = np.zeros((n_test, n_horizons))
+        
+        for h_idx, horizon_estimator in enumerate(self.model.estimators_):
+            tree_predictions = np.array([
+                tree.predict(X_test_scaled) for tree in horizon_estimator.estimators_
+            ])
+            
+            for q in quantiles:
+                quantile_predictions[q][:, h_idx] = np.quantile(tree_predictions, q, axis=0)
+        
+        return quantile_predictions

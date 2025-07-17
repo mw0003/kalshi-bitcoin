@@ -49,6 +49,19 @@ VALIDATION_CONFIG = {
     'step_days': 1  # How many days to step forward each split
 }
 
+PROBABILISTIC_CONFIG = {
+    'quantiles': [0.05, 0.25, 0.5, 0.75, 0.95],
+    'confidence_levels': [0.68, 0.95],
+    'n_bootstrap': 100,
+    'n_distribution_samples': 1000,
+    'calibration_bins': 20,
+    'default_thresholds': {
+        'above_2pct': 1.02,
+        'below_2pct': 0.98,
+        'between_1pct': (0.99, 1.01)
+    }
+}
+
 FEATURE_CONFIG = {
     'lag_periods': [1, 2, 3, 5, 10, 15, 30, 60],
     'rolling_windows': [5, 10, 15, 30, 60, 120, 240],
