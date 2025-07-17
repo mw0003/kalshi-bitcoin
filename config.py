@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta
 
 DATA_CONFIG = {
-    'exchange': 'kraken',
+    'exchange': 'coinbase',
     'symbol': 'BTC/USD',
     'timeframe': '1m',
     'years_back': 2,
