@@ -120,28 +120,42 @@ class BitcoinDataIngester:
         chunk_size = 300
         total_requests = (total_minutes + chunk_size - 1) // chunk_size
         
-        self.logger.info(f"Will make {total_requests} API requests to fetch {total_minutes:,} minutes of data")
+        self.logger.info(f"Will make {total_requests:,} API requests to fetch {total_minutes:,} minutes of data")
+        self.logger.info(f"Estimated time: {total_requests * 0.1 / 60:.1f} minutes (at 0.1s per request)")
         
         current_time = datetime.now() - timedelta(days=years_back * 365)
         end_time = datetime.now()
         
         request_count = 0
+        start_time = time.time()
         
-        with tqdm(total=total_requests, desc="Fetching historical data", unit="req") as pbar:
+        with tqdm(total=total_requests, desc="Fetching historical data", unit="req", 
+                  bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
             while current_time < end_time:
                 chunk_end = min(current_time + timedelta(minutes=chunk_size), end_time)
                 
+                chunk_start_time = time.time()
                 chunk_data = self._fetch_coinbase_chunk(
                     current_time.isoformat() + 'Z',
                     chunk_end.isoformat() + 'Z',
                     granularity
                 )
+                chunk_duration = time.time() - chunk_start_time
                 
                 if not chunk_data.empty:
                     all_chunks.append(chunk_data)
+                    total_candles = sum(len(chunk) for chunk in all_chunks)
+                    
+                    elapsed_time = time.time() - start_time
+                    requests_per_second = request_count / elapsed_time if elapsed_time > 0 else 0
+                    estimated_remaining = (total_requests - request_count) / requests_per_second if requests_per_second > 0 else 0
+                    
                     pbar.set_postfix({
-                        'Total candles': sum(len(chunk) for chunk in all_chunks),
-                        'Latest': chunk_data.index.max().strftime('%Y-%m-%d %H:%M')
+                        'Candles': f"{total_candles:,}",
+                        'Latest': chunk_data.index.max().strftime('%m-%d %H:%M'),
+                        'Rate': f"{requests_per_second:.1f}/s",
+                        'ETA': f"{estimated_remaining/60:.1f}m",
+                        'API': f"{chunk_duration:.2f}s"
                     })
                 
                 current_time = chunk_end
@@ -150,21 +164,31 @@ class BitcoinDataIngester:
                 
                 time.sleep(0.1)
                 
-                if request_count % 100 == 0:
-                    self.logger.info(f"Completed {request_count}/{total_requests} requests")
+                if request_count % 50 == 0:
+                    elapsed_minutes = (time.time() - start_time) / 60
+                    progress_pct = (request_count / total_requests) * 100
+                    candles_fetched = sum(len(chunk) for chunk in all_chunks)
+                    self.logger.info(f"Progress: {request_count:,}/{total_requests:,} requests ({progress_pct:.1f}%) | "
+                                   f"{candles_fetched:,} candles | {elapsed_minutes:.1f}m elapsed")
         
         if not all_chunks:
             raise ValueError("No data was fetched from Coinbase API")
         
+        total_elapsed = time.time() - start_time
+        self.logger.info(f"API requests completed in {total_elapsed/60:.1f} minutes")
         self.logger.info("Combining all chunks...")
+        
+        combine_start = time.time()
         combined_df = pd.concat(all_chunks).sort_index()
+        combine_time = time.time() - combine_start
+        self.logger.info(f"Data combination completed in {combine_time:.1f} seconds")
         
         initial_rows = len(combined_df)
         combined_df = combined_df[~combined_df.index.duplicated(keep='first')]
         duplicates_removed = initial_rows - len(combined_df)
         
         if duplicates_removed > 0:
-            self.logger.info(f"Removed {duplicates_removed} duplicate rows")
+            self.logger.info(f"Removed {duplicates_removed:,} duplicate rows")
         
         self.logger.info(f"Final dataset shape: {combined_df.shape}")
         self.logger.info(f"Date range: {combined_df.index.min()} to {combined_df.index.max()}")
@@ -174,6 +198,7 @@ class BitcoinDataIngester:
         completeness_pct = (actual_minutes / expected_minutes) * 100
         
         self.logger.info(f"Data completeness: {actual_minutes:,} / {expected_minutes:,} minutes ({completeness_pct:.1f}%)")
+        self.logger.info(f"Total processing time: {(time.time() - start_time)/60:.1f} minutes")
         
         return combined_df
     
