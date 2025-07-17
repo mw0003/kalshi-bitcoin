@@ -1,5 +1,6 @@
 # Bitcoin Multi-Horizon Price Forecasting Pipeline
 
+<!-- This is a dummy change for testing PR creation -->
 This project implements a comprehensive machine learning pipeline for predicting Bitcoin prices at multiple horizons (1-20 minutes ahead) using 2 years of historical minute-level data.
 
 ## Features
