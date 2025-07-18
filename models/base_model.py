@@ -13,10 +13,11 @@ import os
 from datetime import datetime
 from utils import calculate_metrics, create_time_based_splits, setup_logging
 from config import VALIDATION_CONFIG, OUTPUT_CONFIG
+from probabilistic_forecasting import ProbabilisticForecaster
 
-class BaseForecaster(ABC):
+class BaseForecaster(ProbabilisticForecaster):
     """
-    Abstract base class for all forecasting models
+    Abstract base class for all forecasting models with probabilistic capabilities
     """
     
     def __init__(self, model_name, config=None):
@@ -34,6 +35,9 @@ class BaseForecaster(ABC):
         self.is_fitted = False
         self.feature_names = None
         self.logger = setup_logging(f'{model_name}.log')
+        
+        # Initialize probabilistic forecasting capabilities
+        super().__init__()
         
     @abstractmethod
     def _create_model(self):
@@ -168,6 +172,8 @@ class BaseForecaster(ABC):
             'model_name': self.model_name,
             'config': self.config,
             'feature_names': self.feature_names,
+            'quantile_models': getattr(self, 'quantile_models', {}),
+            'bootstrap_models': getattr(self, 'bootstrap_models', []),
             'timestamp': datetime.now().isoformat()
         }
         
@@ -184,6 +190,8 @@ class BaseForecaster(ABC):
         self.model_name = model_data['model_name']
         self.config = model_data['config']
         self.feature_names = model_data['feature_names']
+        self.quantile_models = model_data.get('quantile_models', {})
+        self.bootstrap_models = model_data.get('bootstrap_models', [])
         self.is_fitted = True
         
         self.logger.info(f"Model loaded from {filepath}")

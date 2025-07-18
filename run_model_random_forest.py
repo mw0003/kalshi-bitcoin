@@ -177,6 +177,57 @@ def main():
         
         print("Visualizations saved to plots/ directory")
         
+        print("STEP 9: PROBABILISTIC FORECASTING")
+        print("-" * 40)
+        
+        print("Generating probabilistic forecasts...")
+        quantile_preds = final_forecaster.predict_quantiles(X_test)
+        
+        current_price = y_test.iloc[-1, 0] if len(y_test) > 0 else 50000
+        thresholds = {
+            f'above_{int(current_price * 1.02)}': current_price * 1.02,
+            f'below_{int(current_price * 0.98)}': current_price * 0.98,
+            f'between_{int(current_price * 0.99)}_{int(current_price * 1.01)}': (current_price * 0.99, current_price * 1.01)
+        }
+        
+        probabilities = final_forecaster.calculate_probabilities(X_test, thresholds)
+        
+        prob_results = []
+        for query_name, prob_array in probabilities.items():
+            for horizon in range(prob_array.shape[1]):
+                prob_results.append({
+                    'query': query_name,
+                    'horizon': horizon + 1,
+                    'mean_probability': np.mean(prob_array[:, horizon]),
+                    'std_probability': np.std(prob_array[:, horizon])
+                })
+        
+        prob_file = os.path.join(OUTPUT_CONFIG['results_dir'], 'random_forest_probabilities.csv')
+        pd.DataFrame(prob_results).to_csv(prob_file, index=False)
+        print(f"Probability results saved to: {prob_file}")
+        
+        print("STEP 10: CALIBRATION ANALYSIS")
+        print("-" * 40)
+        
+        try:
+            from probabilistic_forecasting import CalibrationAnalyzer
+            
+            calibrator = CalibrationAnalyzer()
+            calibration_results = calibrator.evaluate_calibration(
+                y_test.values, probabilities, horizons=[1, 5, 10, 20]
+            )
+            
+            cal_metrics_file = os.path.join(OUTPUT_CONFIG['results_dir'], 'random_forest_calibration.csv')
+            calibrator.save_calibration_metrics(calibration_results, cal_metrics_file)
+            
+            cal_plot_file = os.path.join(OUTPUT_CONFIG['plots_dir'], 'random_forest_calibration.png')
+            calibrator.plot_calibration_curve(calibration_results, cal_plot_file)
+            
+            print(f"Calibration metrics saved to: {cal_metrics_file}")
+            print(f"Calibration plots saved to: {cal_plot_file}")
+        except Exception as cal_error:
+            print(f"Warning: Calibration analysis failed: {cal_error}")
+        
         print("\n" + "=" * 80)
         print("RANDOM FOREST TRAINING COMPLETED SUCCESSFULLY!")
         print("=" * 80)
@@ -187,6 +238,9 @@ def main():
         print(f"- {model_file}")
         if importance is not None:
             print(f"- {importance_file}")
+        print(f"- {prob_file}")
+        print(f"- {cal_metrics_file}")
+        print(f"- {cal_plot_file}")
         print("- Visualization plots in plots/ directory")
         
     except KeyboardInterrupt:
