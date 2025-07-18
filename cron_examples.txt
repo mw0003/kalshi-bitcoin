@@ -1,0 +1,9 @@
+
+
+40-59 * * * * cd /path/to/kalshi-bitcoin && python run_live_forecast.py --model_path trained_models/random_forest_model.joblib >> logs/live_forecast.log 2>&1
+
+*/5 9-17 * * * cd /path/to/kalshi-bitcoin && python run_live_forecast.py --model_path trained_models/random_forest_model.joblib >> logs/live_forecast.log 2>&1
+
+* 9-17 * * 1-5 cd /path/to/kalshi-bitcoin && python run_live_forecast.py --model_path trained_models/random_forest_model.joblib >> logs/live_forecast.log 2>&1
+
+0 * * * * cd /path/to/kalshi-bitcoin && python -c "from data_ingestion import BitcoinDataIngester; print('Health check:', BitcoinDataIngester().fetch_current_price())" >> logs/health_check.log 2>&1

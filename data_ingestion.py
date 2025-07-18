@@ -300,6 +300,93 @@ class BitcoinDataIngester:
         df = pd.read_csv(filename, index_col='timestamp', parse_dates=True)
         print(f"Data loaded from {filename}, shape: {df.shape}")
         return df
+    
+    def fetch_live_data(self, minutes_back=60):
+        """
+        Fetch the most recent N minutes of Bitcoin price data for live trading
+        
+        Args:
+            minutes_back: Number of minutes of recent data to fetch (default: 60)
+            
+        Returns:
+            pandas.DataFrame: Recent OHLCV data
+        """
+        self.logger.info(f"Fetching last {minutes_back} minutes of live Bitcoin data")
+        
+        end_time = datetime.now()
+        start_time = end_time - timedelta(minutes=minutes_back)
+        
+        granularity = 60  # 1 minute
+        
+        live_data = self._fetch_coinbase_chunk(
+            start_time.isoformat() + 'Z',
+            end_time.isoformat() + 'Z',
+            granularity
+        )
+        
+        if live_data.empty:
+            self.logger.warning("No live data received from Coinbase API")
+            return pd.DataFrame()
+        
+        self.logger.info(f"Fetched {len(live_data)} minutes of live data")
+        self.logger.info(f"Latest price: ${live_data['close'].iloc[-1]:.2f}")
+        self.logger.info(f"Time range: {live_data.index.min()} to {live_data.index.max()}")
+        
+        return live_data
+    
+    def fetch_current_price(self):
+        """
+        Fetch the current Bitcoin price (single data point)
+        
+        Returns:
+            dict: Current price information with timestamp
+        """
+        try:
+            url = "https://api.exchange.coinbase.com/products/BTC-USD/ticker"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            current_price = float(data['price'])
+            timestamp = datetime.now()
+            
+            self.logger.info(f"Current Bitcoin price: ${current_price:.2f} at {timestamp}")
+            
+            return {
+                'price': current_price,
+                'timestamp': timestamp,
+                'bid': float(data.get('bid', 0)),
+                'ask': float(data.get('ask', 0)),
+                'volume': float(data.get('volume', 0))
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to fetch current price: {e}")
+            return None
+    
+    def get_live_features_data(self, minutes_back=120):
+        """
+        Get recent data formatted for feature engineering and model inference
+        
+        Args:
+            minutes_back: Number of minutes to fetch (should be enough for feature engineering)
+            
+        Returns:
+            pandas.DataFrame: Recent data ready for feature engineering
+        """
+        self.logger.info(f"Fetching {minutes_back} minutes for live feature engineering")
+        
+        live_data = self.fetch_live_data(minutes_back)
+        
+        if live_data.empty:
+            self.logger.error("No live data available for feature engineering")
+            return pd.DataFrame()
+        
+        min_required = 240  # 4 hours of data for robust features
+        if len(live_data) < min_required:
+            self.logger.warning(f"Only {len(live_data)} minutes available, may not be enough for all features")
+        
+        return live_data
 
 if __name__ == "__main__":
     ingester = BitcoinDataIngester()

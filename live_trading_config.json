@@ -1,0 +1,20 @@
+{
+  "live_trading": {
+    "enabled": true,
+    "model_path": "trained_models/random_forest_model.joblib",
+    "forecast_frequency": "1min",
+    "active_hours": {
+      "start": "09:00",
+      "end": "17:00",
+      "timezone": "UTC"
+    },
+    "api_settings": {
+      "timeout": 30,
+      "retry_attempts": 3
+    },
+    "output_settings": {
+      "format": "json",
+      "save_live_data": true
+    }
+  }
+}

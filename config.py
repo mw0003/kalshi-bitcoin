@@ -62,6 +62,17 @@ PROBABILISTIC_CONFIG = {
     }
 }
 
+LIVE_CONFIG = {
+    'data_fetch_minutes': 120,  # How many minutes of recent data to fetch
+    'min_data_points': 240,     # Minimum data points needed for reliable features
+    'api_timeout': 30,          # API request timeout in seconds
+    'retry_attempts': 3,        # Number of retry attempts for failed requests
+    'output_format': 'json',    # Output format for live forecasts (json/csv)
+    'save_live_data': True,     # Whether to save live data for debugging
+    'live_data_dir': 'live_data',
+    'forecast_output_dir': 'live_forecasts'
+}
+
 FEATURE_CONFIG = {
     'lag_periods': [1, 2, 3, 5, 10, 15, 30, 60],
     'rolling_windows': [5, 10, 15, 30, 60, 120, 240],
@@ -79,4 +90,8 @@ OUTPUT_CONFIG = {
 
 for dir_name in OUTPUT_CONFIG.values():
     if dir_name.endswith('_dir'):
+        os.makedirs(dir_name, exist_ok=True)
+
+for dir_name in LIVE_CONFIG.values():
+    if isinstance(dir_name, str) and dir_name.endswith('_dir'):
         os.makedirs(dir_name, exist_ok=True)
