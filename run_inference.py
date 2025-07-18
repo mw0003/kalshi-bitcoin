@@ -24,14 +24,15 @@ def load_model(model_path):
     """Load a trained model from file"""
     print(f"Loading model from: {model_path}")
     
-    if 'random_forest' in model_path:
+    if 'random_forest' in model_path or 'demo' in model_path:
         model = RandomForestForecaster()
     elif 'lightgbm' in model_path:
         model = LightGBMForecaster()
     elif 'lstm' in model_path:
         model = LSTMForecaster()
     else:
-        raise ValueError(f"Cannot determine model type from path: {model_path}")
+        print("Warning: Cannot determine model type from filename, defaulting to RandomForest")
+        model = RandomForestForecaster()
     
     model.load_model(model_path)
     return model
